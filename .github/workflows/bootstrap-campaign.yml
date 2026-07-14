@@ -3,6 +3,8 @@ name: Build and publish candidate campaign
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -25,14 +27,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Expand audited campaign source
-        shell: bash
-        run: |
-          set -euo pipefail
-          base64 --decode campaign-source.tar.gz.b64 > /tmp/automata-source.tar.gz
-          tar -xzf /tmp/automata-source.tar.gz -C .
-          rm -f campaign-source.tar.gz.b64 .github/workflows/bootstrap-campaign.yml
 
       - name: Install PDF renderer
         run: |
@@ -86,15 +80,15 @@ jobs:
               print(f"verified {filename}: {actual} pages")
           PY
 
-      - name: Commit complete campaign to main
+      - name: Commit generated PDFs
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add docs
           if ! git diff --cached --quiet; then
-            git commit -m "Publish Automata Intelligence COO candidate campaign"
+            git commit -m "Generate verified campaign PDFs"
             git push origin HEAD:main
           fi
 
