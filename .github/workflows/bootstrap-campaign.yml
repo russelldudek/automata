@@ -3,9 +3,6 @@ name: Build and publish candidate campaign
 on:
   push:
     branches: [main]
-    paths:
-      - campaign-source.tar.gz.b64
-      - .github/workflows/bootstrap-campaign.yml
   workflow_dispatch:
 
 permissions:
