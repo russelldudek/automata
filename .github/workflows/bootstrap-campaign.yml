@@ -1,0 +1,114 @@
+name: Build and publish candidate campaign
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - campaign-source.tar.gz.b64
+      - .github/workflows/bootstrap-campaign.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: automata-campaign
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Expand audited campaign source
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode campaign-source.tar.gz.b64 > /tmp/automata-source.tar.gz
+          tar -xzf /tmp/automata-source.tar.gz -C .
+          rm -f campaign-source.tar.gz.b64 .github/workflows/bootstrap-campaign.yml
+
+      - name: Install PDF renderer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install weasyprint pypdf
+
+      - name: Generate printable documents
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          weasyprint resume.html docs/Russell-Dudek-Automata-Intelligence-Resume.pdf
+          weasyprint cover-letter.html docs/Russell-Dudek-Automata-Intelligence-Cover-Letter.pdf
+          weasyprint interview-brief.html docs/Russell-Dudek-Automata-Intelligence-Interview-Brief.pdf
+          weasyprint 120-day-plan.html docs/Russell-Dudek-Automata-Intelligence-120-Day-Plan.pdf
+          weasyprint operating-review.html docs/Russell-Dudek-Automata-Intelligence-Automation-Yield-Review.pdf
+
+      - name: Verify document page contracts and metadata
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from pypdf import PdfReader, PdfWriter
+
+          specs = {
+              "Russell-Dudek-Automata-Intelligence-Resume.pdf": (2, "Russell Dudek - Automata Intelligence COO Resume", "Role-aligned resume for Chief Operating Officer"),
+              "Russell-Dudek-Automata-Intelligence-Cover-Letter.pdf": (1, "Russell Dudek - Automata Intelligence COO Cover Letter", "Cover letter for Chief Operating Officer"),
+              "Russell-Dudek-Automata-Intelligence-Interview-Brief.pdf": (2, "Automata Intelligence COO Interview Thesis Brief", "Independent candidate interview brief"),
+              "Russell-Dudek-Automata-Intelligence-120-Day-Plan.pdf": (2, "Automata Intelligence COO First 120 Days", "Independent candidate entry plan"),
+              "Russell-Dudek-Automata-Intelligence-Automation-Yield-Review.pdf": (2, "Automata Intelligence Automation Yield Review", "Independent candidate operating review"),
+          }
+          for filename, (expected_pages, title, subject) in specs.items():
+              path = Path("docs") / filename
+              reader = PdfReader(str(path))
+              actual = len(reader.pages)
+              if actual != expected_pages:
+                  raise SystemExit(f"{filename}: expected {expected_pages} pages, found {actual}")
+              writer = PdfWriter()
+              for page in reader.pages:
+                  writer.add_page(page)
+              writer.add_metadata({
+                  "/Title": title,
+                  "/Author": "Russell Dudek",
+                  "/Subject": subject,
+                  "/Keywords": "Automata Intelligence, Chief Operating Officer, Russell Dudek",
+              })
+              temp = path.with_suffix(".tmp.pdf")
+              with temp.open("wb") as handle:
+                  writer.write(handle)
+              temp.replace(path)
+              print(f"verified {filename}: {actual} pages")
+          PY
+
+      - name: Commit complete campaign to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish Automata Intelligence COO candidate campaign"
+            git push origin HEAD:main
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy candidate vision
+        id: deployment
+        uses: actions/deploy-pages@v4
