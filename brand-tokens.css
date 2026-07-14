@@ -1,0 +1,19 @@
+:root {
+  /* Candidate-original, provisional campaign palette. No official Automata color tokens were publicly retrievable. */
+  --ink: #101312;
+  --ink-2: #1a201e;
+  --paper: #f4f1e8;
+  --paper-2: #e8e2d4;
+  --muted: #66706c;
+  --line: #c9c3b6;
+  --signal: #c9f24b;
+  --signal-dark: #6d8e00;
+  --amber: #ffb000;
+  --coral: #ff725e;
+  --cyan: #5ad7c8;
+  --white: #ffffff;
+  --shadow: 0 22px 70px rgba(16,19,18,.14);
+  --radius: 22px;
+  --font-sans: "DejaVu Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "DejaVu Sans Mono", "Cascadia Mono", monospace;
+}
